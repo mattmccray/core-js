@@ -129,7 +129,6 @@ function module(name, definition) {
           synthesizeProp(name, self, props[0][name]);
         }
       } else {
-        if(typeofprops[0])
         props.forEach(function(name, i){
           synthesizeProp(name, self);
         });
@@ -137,8 +136,12 @@ function module(name, definition) {
     },
 
     property: function(name, fnGet, fnSet) {
-      this.get(name, fnGet);
-      this.set(name, fnSet);
+      if(!fnGet && !fnSet) {
+        synthesizeProp(name, this);
+      } else {
+        this.get(name, fnGet);
+        if(fnSet) this.set(name, fnSet);
+      }
     },
 
     get: function(name, fn) {
