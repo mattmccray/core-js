@@ -56,44 +56,78 @@ describe('klass', function() {
       delete ClassTest3;
     });
 
-    // it("should inherit static methods", function() {
-    //   Klass( 'AR', {
-    //     klass: {
-    //       find: function() {
-    //         return "find for "+ this.displayName;
-    //       }
-    //     }
-    //   })
-    //   AR( 'User', {})
-    // 
-    //   expect(AR.find()).to(equal, 'find for AR');
-    //   expect(User.find()).to(equal, 'find for User');
-    // 
-    //   //delete AR
-    //   //delete User
-    // });
-    // 
-    // it("should fire 'subklassed' static method when a subklass is defined", function() {
-    //   var subKlassCount = 0;
-    //   Klass( 'Parent', {
-    //     klass: {
-    //       localSubKlassCount: 0,
-    //       subklassed: function(klass) {
-    //         console.log('Subklassed! '+ klass.displayName)
-    //         subKlassCount += 1;
-    //         Parent.localSubKlassCount += 1;
-    //       }
-    //     }
-    //   })
-    //   Parent( 'Child', {});
-    //   Child( 'Sibling', {});
-    // 
-    //   expect(subKlassCount).to(equal, 2);
-    //   expect(Parent.localSubKlassCount).to(equal, 2);
-    // 
-    //   //delete Parent
-    //   //delete Child
-    // });
+    it("should inherit static methods", function() {
+      module('ClassTest10', function(){
+        klass('Model', function(){
+          staticMethod('find', function(){
+            return 'find '+ this.displayName;
+          })
+        });
+        subklass(Model, 'User', function(){
+          
+        });
+      })
+    
+      expect(ClassTest10.Model.find()).to(equal, 'find Model');
+      expect(ClassTest10.User.find()).to(equal, 'find User');
+    
+      delete ClassTest10;
+    });
+    
+    it("should allow calls to superclass methods", function() {
+      module('ClassTest11', function(){
+        klass('Person', function(){
+          staticMethod('title', function(){
+            return 'Buffoon';
+          });
+        });
+        
+        subklass(Person, 'Sith', function(){
+          staticMethod('title', function(){
+            return 'Darth '+ this.callSuper('title');
+          });
+        });
+      });
+    
+      expect(ClassTest11.Person.title()).to(equal, 'Buffoon');
+      expect(ClassTest11.Sith.title()).to(equal, 'Darth Buffoon');
+
+      delete ClassTest11;
+    });
+    
+
+    it("should trigger 'didSubklass' static method when a subklass is defined", function() {
+      
+      
+      module('ClassTest11', function(){
+        this.subKlassCount = 0;
+        
+        klass('Person', function(){
+          staticMethod('didSubklass', function(){
+            subKlassCount += 1;
+          })
+        });
+        
+        subklass(Person, 'Sith', function(){
+          method('title', function(){
+            return 'Darth '+ this.callSuper('title');
+          });
+        });
+      });
+
+      expect(ClassTest11.subKlassCount).to(equal, 1);
+      
+      module('ClassTest12', function(){
+        subklass(ClassTest11.Person, 'Jedi', function(){
+          this.isJedi = true;
+        })
+      })
+      
+      expect(ClassTest11.subKlassCount).to(equal, 2);
+
+      delete ClassTest11;
+      delete ClassTest12;
+    });
 
 
   });
@@ -146,22 +180,24 @@ describe('klass', function() {
       module('ClassTest5', function(){
         klass('User', function(){
           
-          property('username');
+          this.username = undefined;
 
           // read-only
-          property('planet', function(){ return 'earth'; });
-
-          synthesize('email');
-
-          // with default value
-          synthesize({
-            country: 'USA'
+          property('planet', {
+            get: function(){ return 'earth'; }
           });
 
-          // manual property
+          property('email', { value:'' });
+
+          // multiple properties with default value &| private vars
           var privateAge = 10;
-          get('age', function(){ return privateAge; });
-          set('age', function(val){ privateAge = val; });
+          properties({
+            country: { value: 'USA' },
+            age: {
+              get: function(){ return privateAge; },
+              set: function(val) { privateAge = val; }
+            }
+          });
           
         });
       });
@@ -177,7 +213,7 @@ describe('klass', function() {
     // Values
       expect(u.username).to(be_undefined);
       expect(u.planet).to(equal, 'earth');
-      expect(u.email).to(be_undefined);
+      expect(u.email).to(equal, '');
       expect(u.country).to(equal, 'USA');
       expect(u.age).to(equal, 10);
       
@@ -267,26 +303,29 @@ describe('klass', function() {
       delete ClassTest9;
     });
 
-    // it("should allow calls to superclass methods", function() {
-    //   Klass( 'Person', {
-    //     title: function() {
-    //       return 'Buffoon';
-    //     }
-    //   });
-    //   
-    //   Person.subKlass( 'Sith', {
-    //     title: function() {
-    //       return "Darth "+ this.callSuper('title');
-    //     }
-    //   });
-    // 
-    //   var u = new Person();
-    //   var s = new Sith();
-    //   expect(u.title()).to(equal, 'Buffoon');
-    //   expect(s.title()).to(equal, 'Darth Buffoon');
-    //   //delete Person
-    //   //delete Sith
-    // });
+    it("should allow calls to superclass methods", function() {
+      module('ClassTest11', function(){
+        klass('Person', function(){
+          method('title', function(){
+            return 'Buffoon';
+          });
+        });
+        
+        subklass(Person, 'Sith', function(){
+          method('title', function(){
+            return 'Darth '+ this.callSuper('title');
+          });
+        });
+      });
+    
+      var u = new ClassTest11.Person();
+      var s = new ClassTest11.Sith();
+      
+      expect(u.title()).to(equal, 'Buffoon');
+      expect(s.title()).to(equal, 'Darth Buffoon');
+
+      delete ClassTest11;
+    });
     
   });
 

@@ -29,8 +29,15 @@ describe("module", function() {
     module('Test3', function(){
       var count = 0;
       
-      get('count', function(){ return count; });
-      set('count', function(val){ count = val; });
+      property('count', {
+        get: function() {
+          return count;
+        },
+        set: function(val) {
+          count = val;
+        }
+      });
+      
       
       method('getCount', function(){ return count; });
     });
@@ -45,16 +52,17 @@ describe("module", function() {
     delete Test3;
   });
 
-  // it("should create anonymous classes (without accurate displayName)", function() {
-  //   var Action = Klass({
-  //     init: function() {}
-  //   });
-  //   expect(Action).to_not(be_undefined)
-  //   expect(Action.displayName).to(equal, "[AnonymousKlass]")
-  // 
-  //   var a = new Action();
-  //   expect(a.klass).to(equal, Action);
-  //   expect(a.klass.displayName).to(equal, "[AnonymousKlass]")
-  //   //delete Action
-  // });
+  it('should support events', function(){
+    module('DB', function(){
+      method('connect', function(){
+        this.fire('connect', {sender:this});
+      });
+    });
+    var count = 0;
+    DB.on('connect', function(){
+      count += 1;
+    });
+    DB.connect();
+    expect(count).to(equal, 1);
+  });
 });

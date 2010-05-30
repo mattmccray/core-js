@@ -27,6 +27,9 @@ function module(name, definition) {
   var current_constructor, global = this, lastLogGroup = null;
   if (!global[name]) {
     global[name] = {};
+    for(var prop in module.coreMethods) {
+      global[name][prop] = module.coreMethods[prop];
+    };
   };
   var module_stack = [global[name]],
       module_path = [name];
@@ -64,26 +67,10 @@ function module(name, definition) {
     return cleaned;
   }
 
-  function synthesizeProp(name, klass, defaultValue) {
-    var intern = '__'+ name;
-    if(!(intern in klass)) klass.define(intern, defaultValue);
-    klass.property(name,
-      function get(){
-        return this[intern];
-      },
-      function set(value){
-        if(value != this[intern]) {
-          var oldValue = this[intern];
-          this[intern] = value;
-          this.fire(':property:change', { sender:this, property:name, value:value, previous:oldValue });
-        }
-      }
-    );
-  };
-
   var keywords = {
     module: function(name, definition) {
       var module = push_module(name);
+      this.include(module.coreMethods);
       definition.call(module);
       pop_module();
     },
@@ -99,7 +86,6 @@ function module(name, definition) {
       current_constructor.className = fullpath(name);
       Object.defineProperty(current_constructor.prototype, "klass", {
       	get : function () { return curr_ctor; },
-      	writable: false,
       	configurable: false,
       	enumerable: true,
       });
@@ -119,24 +105,34 @@ function module(name, definition) {
       for(var prop in clone(parent)) { // Copy static methods...
         current_constructor[prop] = parent[prop];
       };
+      for(var prop in module.coreMethods) {
+        current_constructor[prop] = module.coreMethods[prop];
+      };
       var curr_ctor = current_constructor;
       current_constructor.displayName = name;
       current_constructor.className = fullpath(name);
       Object.defineProperty(current_constructor.prototype, "klass", {
       	get : function () { return curr_ctor; },
-      	writable: false,
+      	configurable: false,
+      	enumerable: true,
+      });
+      Object.defineProperty(current_constructor.prototype, "superKlass", {
+      	get : function () { return parent; },
       	configurable: false,
       	enumerable: true,
       });
       definition.call(current_constructor);
       this.include(module.coreMethods);
       current_module()[name] = current_constructor;
+      if('didSubklass' in parent) {
+        parent.didSubklass(current_constructor);
+      };
       current_constructor = undefined;
     },
 
     include: function(mixin) {
       for (var prop in mixin) {
-        current_constructor.prototype[prop] = mixin[prop];
+        this.define(prop, mixin[prop]);
       };
     },
 
@@ -165,42 +161,18 @@ function module(name, definition) {
       current_constructor[name] = fn;
     },
 
-    synthesize: function() {
-      var props = Array.prototype.slice.call(arguments), self = this;
-      if(props.length == 1 && typeOf(props[0]) == 'object') {
-        for(var name in props[0]) {
-          synthesizeProp(name, self, props[0][name]);
-        }
+    property: function(name, definition) {
+      if(current_constructor) {
+        Object.defineProperty(current_constructor.prototype, name, definition);
       } else {
-        props.forEach(function(name, i){
-          synthesizeProp(name, self);
-        });
+        Object.defineProperty(current_module(), name, definition);
       };
     },
 
-    property: function(name, fnGet, fnSet) {
-      if(!fnGet && !fnSet) {
-        synthesizeProp(name, this);
-      } else {
-        this.get(name, fnGet);
-        if(fnSet) this.set(name, fnSet);
+    properties: function(props) {
+      for(var name in props) {
+        this.property(name, props[name]);
       }
-    },
-
-    get: function(name, fn) {
-      if(current_constructor) {
-        Object.defineProperty(current_constructor.prototype, name, { get: fn });
-      } else {
-        Object.defineProperty(current_module(), name, { get: fn });
-      };
-    },
-
-    set: function(name, fn) {
-      if(current_constructor) {
-        Object.defineProperty(current_constructor.prototype, name, { set: fn });
-      } else {
-        Object.defineProperty(current_module(), name, { set: fn });
-      };
     },
 
     log: function() {
@@ -225,9 +197,8 @@ function module(name, definition) {
   }};
 };
 
-module.debug = false;
-
 module.coreMethods = {
+
   method: function() {
     var self = this,
         args = Array.prototype.slice.call(arguments),
@@ -236,13 +207,46 @@ module.coreMethods = {
       return meth.apply(self, args.concat(Array.prototype.slice.call(arguments)));
     };
   },
-  callSuper: function() {
 
+  callSuper: function() {
+    if('superKlass' in this || 'superKlass' in this.prototype) {
+      var parent = this.superKlass || this.prototype.superKlass,
+          args = Array.prototype.slice.call(arguments),
+          meth = args.shift();
+      if(meth in parent.prototype) {
+        return parent.prototype[meth].apply(this,args);
+      } else if(meth in parent) { // Is this such a good idea?
+        return parent[meth].apply(this,args);
+      } else {
+        throw "Method not found: "+ meth;
+      };
+    } else {
+      throw "No super class found!";
+    }
   },
-  fire: function(event, data) { // NOOP for now
+
+  fire: function(eventName, data) { // NOOP for now
+    if(!this.__listeners || !(eventName in this.__listeners)) return;
+    this.__listeners[eventName].forEach(function(handler){ handler.call(this, data); });
+    return this;
   },
-  on: function(event, handler) { // NOOP for now
+
+  on: function(eventName, handler) { // NOOP for now
+    if(!this.__listeners) this.__listeners = {};
+    if(!(eventName in this.__listeners)) this.__listeners[eventName] = [];
+    this.__listeners[eventName].push(handler);
+    return this;
   },
-  stopOn: function(event, handler) { // NOOP for now
+  observe: function(eventName, handler) { return this.on(eventName, handler); },
+
+  stopObserving: function(eventName, handler) { // NOOP for now
+    if(!this.__listeners || !(eventName in this.__listeners)) return;
+    if(handler)
+      this.__listeners[eventName] = this.__listeners[eventName].filter(function(h){ return h !== handler; });
+    else
+      this.__listeners[eventName] = [];
+    return this;
   }
 };
+
+module.debug = false;
