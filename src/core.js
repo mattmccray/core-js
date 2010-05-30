@@ -27,8 +27,7 @@ var typeOf = (function(){
 
 
 function module(name, definition) {
-  var current_constructor, global = this;
-
+  var current_constructor, global = this, lastLogGroup = null;
   if (!global[name]) {
     global[name] = {};
   };
@@ -56,6 +55,16 @@ function module(name, definition) {
   
   function fullpath(name) {
     return module_path.join(".") + "." + name;
+  }
+  
+  function clone(object) {
+    var cleaned = {};
+    for(name in object) {
+      if(object.hasOwnProperty(name)) {
+        cleaned[name] = object[name];
+      };
+    };
+    return cleaned;
   }
   
   function synthesizeProp(name, klass, defaultValue) {
@@ -97,10 +106,30 @@ function module(name, definition) {
       current_module()[name] = current_constructor;
       current_constructor = undefined;
     },
+    
+    subklass: function(parent, name, definition) {
+      current_constructor = function() {
+        if (this.initialize) {
+          this.initialize.apply(this, arguments);
+        };
+      };
+      current_constructor.prototype = clone(parent.prototype);
+      for(var prop in clone(parent)) { // Copy static methods...
+        current_constructor[prop] = parent[prop];
+      };
+      var curr_ctor = current_constructor;
+      current_constructor.displayName = name;
+      current_constructor.className = fullpath(name);
+      current_constructor.prototype.__defineGetter__('klass', function(){ return curr_ctor; });
+      definition.call(current_constructor);
+      this.include(module.coreMethods);
+      current_module()[name] = current_constructor;
+      current_constructor = undefined;
+    },
 
     include: function(mixin) {
-      for (var slot_name in mixin) {
-        current_constructor.prototype[slot_name] = mixin[slot_name];
+      for (var prop in mixin) {
+        current_constructor.prototype[prop] = mixin[prop];
       };
     },
 
@@ -114,6 +143,10 @@ function module(name, definition) {
 
     method: function(name, fn) {
       this.define(name, fn)
+    },
+    
+    ctor: function(fn) {
+      this.method('initialize', fn);
     },
 
     alias: function(oldName, newName) {
@@ -161,12 +194,31 @@ function module(name, definition) {
       } else {
         current_module().__defineSetter__(name, fn);
       };
+    },
+    
+    log: function() {
+      if(!module.debug) return;
+      var caller_name = module_path.join('.');
+      if(window.console && console.log) {
+        if(caller_name && console.group && caller_name != lastLogGroup) {
+          console.groupEnd()
+          console.group(caller_name +" ("+ (new Date()).getTime() +")");
+          lastLogGroup = caller_name;
+        }
+        var args = Array.prototype.slice.call(arguments);
+        args.forEach(function(arg){ 
+          console.log(arg);
+        })
+      }
     }
   };
+  
   with(current_module()) { with(keywords) { // Not sure if this will stay around or not -- It's handy for now.
     eval("("+ definition +")").call(current_module(), keywords);
   }};
 };
+
+module.debug = false;
 
 module.coreMethods = {
   method: function() {
@@ -176,6 +228,9 @@ module.coreMethods = {
     return function curriedMethod() {
       return meth.apply(self, args.concat(Array.prototype.slice.call(arguments)));
     };
+  },
+  callSuper: function() {
+    
   },
 // TODO: add Observer stuff...
   fire: function(event, data) { // NOOP for now

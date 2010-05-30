@@ -242,51 +242,31 @@ describe('klass', function() {
       delete ClassTest7;
     });
     
-    // it("should inherit methods", function() {
-    //   Klass( 'Car', {
-    //     start: function() {
-    //       return this.klass.displayName +" is running";
-    //     }
-    //   })
-    //   Car( 'Truck', {
-    //     stop: function() {
-    //       return 'stopped';
-    //     }
-    //   });
-    //   var c = new Car();
-    //   var t = new Truck();
-    //   expect(c.start()).to(equal, 'Car is running');
-    //   expect(t.start()).to(equal, 'Truck is running');
-    //   expect(t.stop()).to(equal, 'stopped');
-    // 
-    //   //delete c
-    //   //delete t
-    // });
-    // 
-    // it("should inherit methods (Anonymous)", function() {
-    //   var Car = Klass({
-    //     start: function() {
-    //       return this.klass.displayName +" is running";
-    //     }
-    //   })
-    //   var Truck = Car.subKlass({
-    //     stop: function() {
-    //       return "stopped";
-    //     }
-    //   });
-    //   expect(Car).to_not(be_undefined);
-    //   expect(Truck).to_not(be_undefined);
-    //   var c = new Car();
-    //   var t = new Truck();
-    //   expect(c.start()).to(equal, '[AnonymousKlass] is running');
-    //   expect(t.start()).to(equal, '[AnonymousSubKlass] is running');
-    //   expect(t.stop()).to(equal, 'stopped');
-    //   
-    //   //delete c
-    //   //delete t
-    // });
-    // 
-    // 
+    it("should inherit methods", function() {
+      module('ClassTest9', function(){
+        klass('Car', function(){
+          method('start', function(){
+            return this.klass.displayName +' is running';
+          });
+        });
+        
+        subklass(Car, 'Truck', function(){
+          method('stop', function(){
+            return 'stopped';
+          });
+        });
+      });
+      
+      var c = new ClassTest9.Car(),
+          t = new ClassTest9.Truck();
+      
+      expect(c.start()).to(equal, 'Car is running');
+      expect(t.start()).to(equal, 'Truck is running');
+      expect(t.stop()).to(equal, 'stopped');
+      
+      delete ClassTest9;
+    });
+
     // it("should allow calls to superclass methods", function() {
     //   Klass( 'Person', {
     //     title: function() {
