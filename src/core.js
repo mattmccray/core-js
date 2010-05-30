@@ -59,7 +59,7 @@ function module(name, definition) {
   
   function clone(object) {
     var cleaned = {};
-    for(name in object) {
+    for(var name in object) {
       if(object.hasOwnProperty(name)) {
         cleaned[name] = object[name];
       };
@@ -100,7 +100,13 @@ function module(name, definition) {
       var curr_ctor = current_constructor;
       current_constructor.displayName = name;
       current_constructor.className = fullpath(name);
-      current_constructor.prototype.__defineGetter__('klass', function(){ return curr_ctor; });
+//      current_constructor.prototype.__defineGetter__('klass', function(){ return curr_ctor; });
+      Object.defineProperty(current_constructor.prototype, "klass", {
+      	get : function () { return curr_ctor; },
+      	writable: false,
+      	configurable: false,
+      	enumerable: true,
+      });
       definition.call(current_constructor);
       this.include(module.coreMethods);
       current_module()[name] = current_constructor;
@@ -120,7 +126,13 @@ function module(name, definition) {
       var curr_ctor = current_constructor;
       current_constructor.displayName = name;
       current_constructor.className = fullpath(name);
-      current_constructor.prototype.__defineGetter__('klass', function(){ return curr_ctor; });
+//      current_constructor.prototype.__defineGetter__('klass', function(){ return curr_ctor; });
+      Object.defineProperty(current_constructor.prototype, "klass", {
+      	get : function () { return curr_ctor; },
+      	writable: false,
+      	configurable: false,
+      	enumerable: true,
+      });
       definition.call(current_constructor);
       this.include(module.coreMethods);
       current_module()[name] = current_constructor;
@@ -182,17 +194,21 @@ function module(name, definition) {
     
     get: function(name, fn) {
       if(current_constructor) {
-        current_constructor.prototype.__defineGetter__(name, fn);
+        Object.defineProperty(current_constructor.prototype, name, { get: fn });
+//        current_constructor.prototype.__defineGetter__(name, fn);
       } else {
-        current_module().__defineGetter__(name, fn);
+        Object.defineProperty(current_module(), name, { get: fn });
+//        current_module().__defineGetter__(name, fn);
       };
     },
     
     set: function(name, fn) {
       if(current_constructor) {
-        current_constructor.prototype.__defineSetter__(name, fn);
+        Object.defineProperty(current_constructor.prototype, name, { set: fn });
+//        current_constructor.prototype.__defineSetter__(name, fn);
       } else {
-        current_module().__defineSetter__(name, fn);
+        Object.defineProperty(current_module(), name, { set: fn });
+//        current_module().__defineSetter__(name, fn);
       };
     },
     
