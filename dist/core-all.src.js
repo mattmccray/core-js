@@ -1,13 +1,5 @@
 /*
-Core.js & Language Extensions (v0.5.1)
-  M@ McCray <matt@elucidata.net>
-  http://github.com/darthapo/core-js
-
-Tested and works in WebKit (Safari 4 & Chrome 4) & FireFox 3.6.
-*/
-
-/*
-Core.js (v0.5.1)
+Core.js & Language Extensions (v0.6)
   M@ McCray <matt@elucidata.net>
   http://github.com/darthapo/core-js
 
@@ -258,14 +250,6 @@ module.coreMethods = {
 };
 
 module.debug = false;
-/*
-Core.js - Language Extensions (v0.5.1)
-  M@ McCray <matt@elucidata.net>
-  http://github.com/darthapo/core-js
-
-(Requires Core.js) Tested and works in WebKit (Safari 4 & Chrome 4) & FireFox 3.6.
-*/
-
 
 Array.from = function(item) {
   if (item == null) return [];

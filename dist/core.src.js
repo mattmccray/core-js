@@ -1,5 +1,5 @@
 /*
-Core.js (v0.5.1)
+Core.js (v0.6)
   M@ McCray <matt@elucidata.net>
   http://github.com/darthapo/core-js
 
