@@ -74,7 +74,7 @@ describe('klass', function() {
       delete ClassTest10;
     });
     
-    it("should allow calls to superclass methods", function() {
+    it("should allow calls to superclass static methods", function() {
       module('ClassTest11', function(){
         klass('Person', function(){
           staticMethod('title', function(){
@@ -84,7 +84,7 @@ describe('klass', function() {
         
         subklass(Person, 'Sith', function(){
           staticMethod('title', function(){
-            return 'Darth '+ this.callSuper('title');
+            return 'Darth '+ this._super();
           });
         });
       });
@@ -110,7 +110,7 @@ describe('klass', function() {
         
         subklass(Person, 'Sith', function(){
           method('title', function(){
-            return 'Darth '+ this.callSuper('title');
+            return 'Darth '+ this._super();
           });
         });
       });
@@ -313,7 +313,7 @@ describe('klass', function() {
         
         subklass(Person, 'Sith', function(){
           method('title', function(){
-            return 'Darth '+ this.callSuper('title');
+            return 'Darth '+ this._super();
           });
         });
       });
@@ -323,6 +323,83 @@ describe('klass', function() {
       
       expect(u.title()).to(equal, 'Buffoon');
       expect(s.title()).to(equal, 'Darth Buffoon');
+
+      delete ClassTest11;
+    });
+    
+    it("should allow calls to superclass constructor", function() {
+      module('ClassTest11', function(){
+        klass('Person', function(){
+          ctor(function(name){
+            this.name = name;
+          });
+          
+          method('title', function(){ return this.name; });
+          
+        });
+        
+        subklass(Person, 'Sith', function(){
+          ctor(function(name){
+            this._super('Darth '+ name);
+//            _super('initialize', 'Darth '+ name)
+          });
+        });
+        
+        // subklass(Sith, 'Emperor', function(){
+        //   ctor(function(name){
+        //     this._super('Lord '+ name);
+        //   });
+        // });
+        
+      });
+    
+      var u = new ClassTest11.Person("Matt");
+      var s = new ClassTest11.Sith("APO");
+//      var e = new ClassTest11.Sith("Palpatine");
+      
+      expect(u.title()).to(equal, 'Matt');
+      expect(s.title()).to(equal, 'Darth APO');
+//      expect(s.title()).to(equal, 'Lord Palpatine');
+
+      delete ClassTest11;
+    });
+    
+    it("should inherit properties", function() {
+      module('ClassTest11', function(){
+        klass('Person', function(){
+          ctor(function(name){
+            this.name = name;
+          });
+          
+          property('title', { get:function(){ return ':'+ this.name; } });
+          
+        });
+        
+        subklass(Person, 'Sith', function(){
+          ctor(function(name){
+            this._super('Darth '+ name);
+          });
+        });
+
+//         subklass(Sith, 'Emperor', function(){
+//           ctor(function(name){
+//             this._super('Lord '+ name);
+// //              this.name = 'Lord '+ name;
+//           });
+//         });
+      });
+    
+      var u = new ClassTest11.Person("Matt");
+      var s = new ClassTest11.Sith("APO");
+  //    var e = new ClassTest11.Emperor('Palpatine');
+
+      // alert(u.title)
+      // alert(s.title)
+      // alert(e.title)
+      
+      expect(u.title).to(equal, ':Matt');
+      expect(s.title).to(equal, ':Darth APO');
+//      expect(e.title).to(equal, ':Lord Palpatine');
 
       delete ClassTest11;
     });

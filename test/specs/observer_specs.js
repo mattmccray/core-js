@@ -47,16 +47,4 @@ describe("class events", function() {
     expect(eventCount).to(equal, 2);
   })
 
-  // it("should create anonymous classes (without accurate displayName)", function() {
-  //   var Action = Klass({
-  //     init: function() {}
-  //   });
-  //   expect(Action).to_not(be_undefined)
-  //   expect(Action.displayName).to(equal, "[AnonymousKlass]")
-  // 
-  //   var a = new Action();
-  //   expect(a.klass).to(equal, Action);
-  //   expect(a.klass.displayName).to(equal, "[AnonymousKlass]")
-  //   //delete Action
-  // });
 });

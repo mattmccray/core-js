@@ -25,9 +25,10 @@ var typeOf = (function(){
   };
 })();
 
+//= require "lang"
 
 function module(name, definition) {
-  var current_constructor, global = this, lastLogGroup = null;
+  var current_constructor, parent_klass, global = this, lastLogGroup = null, propertyCache = {};
   if (!global[name]) {
     global[name] = {};
     for(var prop in module.coreMethods) {
@@ -58,7 +59,7 @@ function module(name, definition) {
   
   function fullpath(name) {
     return module_path.join(".") + "." + name;
-  }
+  };
   
   function clone(object) {
     var cleaned = {};
@@ -68,7 +69,94 @@ function module(name, definition) {
       };
     };
     return cleaned;
-  }
+  };
+  
+  function cache_property(path, prop, def) {
+    if(!propertyCache[path]) propertyCache[path] = {};
+    propertyCache[path][prop] = def;
+  };
+  
+  function has_super(name) {
+    if(parent_klass) {
+      var parent = parent_klass.prototype,
+          inside = (name in parent),
+          anctrs = (current_constructor) ? current_constructor.ancestors.first(function(proto) { return name in proto && Var.isFunction(proto[name]); }) : false;
+      return inside || anctrs;
+    }
+    return false;
+  };
+  
+  function get_super(name) {
+//     var parent = parent_klass.prototype;
+//     console.log('Returning {0}.{1}()'.merge(parent_klass.displayName, name))
+// //    console.log(parent[name])
+//     return parent[name]; // Hmmm...
+
+  
+//console.log("Getting super."+ name +"() "+ current_constructor.displayName +" > "+ current_constructor.ancestors.map(function(a){ return a.klass.displayName; }).join(" > "));
+//console.log(current_constructor.ancestors.map(function(a){ return a.klass.displayName; }))
+    
+    var ancestor = current_constructor.ancestors.first(function(proto) { return proto.hasOwnProperty(name) && Var.isFunction(proto[name]); });
+
+    console.log(" super."+ name +" from: "+ ancestor.klass.displayName);
+    console.dir(ancestor[name])
+
+    return ancestor[name];
+  };
+  
+  var excludeFields = Array.from('klass superKlass didSubklass ancestors className displayName').concat(Object.keys(module.coreMethods)).flatten();
+  
+  function build_class(name, definition, parent) {
+    parent_klass = parent;
+    current_constructor = function() {
+      if (this.initialize) {
+        this.initialize.apply(this, arguments);
+      };
+    };
+
+    current_constructor.ancestors = [];
+    current_constructor.displayName = name;
+    current_constructor.className = fullpath(name);
+    current_constructor.prototype.klass = current_constructor;
+    
+    if(parent) {
+      console.log(name +" is subklassing: "+ parent.displayName);
+      var grandparent = parent.prototype, 
+          parentProps = (parent.className in propertyCache) ? Object.keys(propertyCache[parent.className]) : [],
+          exclusions = excludeFields.clone().concat(parentProps).flatten();
+      current_constructor.prototype = Object.without(parent.prototype, exclusions);
+      current_constructor.prototype.klass = current_constructor;
+      current_constructor.prototype.superKlass = parent;
+      for(var prop in Object.without(parent, exclusions)) {// Copy static methods...
+        console.log(" + static method: "+ prop)
+        current_constructor[prop] = parent[prop];
+      };
+      for (var i=0; i < parentProps.length; i++) {
+        var prop = parentProps[i];
+        console.log(" @ property: "+ prop)
+        this.property(prop, propertyCache[parent.className][prop]);
+      };
+
+      while (grandparent) {
+        console.log(' > ancestor chain: '+ grandparent.klass.displayName);
+        current_constructor.ancestors.push(grandparent);
+        grandparent = ('superKlass' in grandparent) ? grandparent.superKlass.prototype : false;
+      };
+    };
+
+    this.include(module.coreMethods);
+    
+    definition.call(current_constructor);
+    
+    current_module()[name] = current_constructor;
+    
+    if(parent && 'didSubklass' in parent) {
+      parent.didSubklass(current_constructor);
+    };
+    
+    current_constructor = undefined;
+    parent_klass = undefined;
+  };
   
   var keywords = {
     module: function(name, definition) {
@@ -79,59 +167,16 @@ function module(name, definition) {
     },
     
     klass: function(name, definition) {
-      current_constructor = function() {
-        if (this.initialize) {
-          this.initialize.apply(this, arguments);
-        };
-      };
-      var curr_ctor = current_constructor;
-      current_constructor.displayName = name;
-      current_constructor.className = fullpath(name);
-      Object.defineProperty(current_constructor.prototype, "klass", {
-      	get : function () { return curr_ctor; },
-      	configurable: false,
-      	enumerable: true,
-      });
-      definition.call(current_constructor);
-      this.include(module.coreMethods);
-      current_module()[name] = current_constructor;
-      current_constructor = undefined;
+      build_class.call(this, name, definition, false);
     },
     
     subklass: function(parent, name, definition) {
-      current_constructor = function() {
-        if (this.initialize) {
-          this.initialize.apply(this, arguments);
-        };
-      };
-      current_constructor.prototype = clone(parent.prototype);
-      for(var prop in clone(parent)) { // Copy static methods...
-        current_constructor[prop] = parent[prop];
-      };
-      for(var prop in module.coreMethods) {
-        current_constructor[prop] = module.coreMethods[prop];
-      };
-      var curr_ctor = current_constructor;
-      current_constructor.displayName = name;
-      current_constructor.className = fullpath(name);
-      Object.defineProperty(current_constructor.prototype, "klass", {
-      	get : function () { return curr_ctor; },
-      	configurable: false,
-      	enumerable: true,
-      });
-      Object.defineProperty(current_constructor.prototype, "superKlass", {
-      	get : function () { return parent; },
-      	configurable: false,
-      	enumerable: true,
-      });
-      definition.call(current_constructor);
-      this.include(module.coreMethods);
-      current_module()[name] = current_constructor;
-      if('didSubklass' in parent) {
-        parent.didSubklass(current_constructor);
-      };
-      current_constructor = undefined;
+      build_class.call(this, name, definition, parent);
     },
+    
+//     _super: function(name) {
+// //      alert(has_super(name))
+//     },
 
     include: function(mixin) {
       for (var prop in mixin) {
@@ -148,7 +193,15 @@ function module(name, definition) {
     },
 
     method: function(name, fn) {
-      this.define(name, fn)
+      if( has_super(name) ) {
+        var superFn = get_super(name);
+        this.define(name, function(){
+          this._super = superFn;
+          return fn.apply(this, arguments);
+        })
+      } else {
+        this.define(name, fn)
+      }
     },
     
     ctor: function(fn) {
@@ -161,13 +214,27 @@ function module(name, definition) {
     },
     
     staticMethod: function(name, fn) {
-      current_constructor[name] = fn;
+      // Check of parent...
+      if(name in current_constructor) {
+        var superFn = current_constructor[name];
+        current_constructor[name] = function(){
+          this._super = superFn;
+          return fn.apply(this, arguments);
+        };
+      } else {
+        current_constructor[name] = fn;
+      };
     },
 
     property: function(name, definition) {
+      // definition.configurable = true;
+      // if(!'value' in definition) definition.writable = true;
+      // definition.enumerable = true;
       if(current_constructor) {
+        cache_property(current_constructor.className, name, definition);
         Object.defineProperty(current_constructor.prototype, name, definition);
       } else {
+        cache_property(module_path.join('.'), name, definition);
         Object.defineProperty(current_module(), name, definition);
       };
     },
@@ -209,23 +276,6 @@ module.coreMethods = {
     return function curriedMethod() {
       return meth.apply(self, args.concat(Array.prototype.slice.call(arguments)));
     };
-  },
-  
-  callSuper: function() {
-    if('superKlass' in this || 'superKlass' in this.prototype) {
-      var parent = this.superKlass || this.prototype.superKlass,
-          args = Array.prototype.slice.call(arguments),
-          meth = args.shift();
-      if(meth in parent.prototype) {
-        return parent.prototype[meth].apply(this,args);
-      } else if(meth in parent) { // Is this such a good idea?
-        return parent[meth].apply(this,args);
-      } else {
-        throw "Method not found: "+ meth;
-      };
-    } else {
-      throw "No super class found!";
-    }
   },
   
   fire: function(eventName, data) { // NOOP for now

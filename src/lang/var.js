@@ -9,9 +9,17 @@ var Var = {
   isDefined: function(item) {
     return typeOf(item) != 'undefined';
   },
+  
+  isFunction: function(item) {
+    return typeOf(item) === 'function';
+  },
 
   isObject: function(item) {
     return typeOf(item) == 'object';
+  },
+  
+  isHash: function(item) {
+    return item.toString() === '[object Object]';
   },
 
   isArray: function(item) {
