@@ -1,5 +1,5 @@
 /*
-Core.js (v0.6.1)
+Core.js (v0.6.3)
   M@ McCray <matt@elucidata.net>
   http://github.com/darthapo/core-js
 
@@ -366,7 +366,8 @@ Native.extendAll(Object, {
 });
 
 if(!('defineProperty' in Object) && '__defineGetter__' in Object.prototype) {
-  Object.extend('defineProperty', function(object, name, defs) {
+
+  Native.extend(Object, 'defineProperty', function(object, name, defs) {
     if('get' in defs) object.__defineGetter__(name, defs.get);
     if('set' in defs) object.__defineSetter__(name, defs.set);
     if('value' in defs) { // How to handle defs.value?
@@ -553,6 +554,10 @@ function module(name, definition) {
     propertyCache[path][prop] = def;
   };
 
+  function property_in_cache(path, prop) {
+    return ( path in propertyCache && prop in propertyCache[path] );
+  };
+
   function has_super(name) {
     if(parent_klass) {
       var parent = parent_klass.prototype,
@@ -598,11 +603,6 @@ function module(name, definition) {
       for(var prop in Object.without(parent, exclusions)) {// Copy static methods...
         current_constructor[prop] = parent[prop];
       };
-      for (var i=0; i < parentProps.length; i++) {
-        var prop = parentProps[i];
-        this.property(prop, propertyCache[parent.className][prop]);
-      };
-
       while (grandparent) {
         current_constructor.ancestors.push(grandparent);
         grandparent = ('superKlass' in grandparent) ? grandparent.superKlass.prototype : false;
@@ -613,11 +613,20 @@ function module(name, definition) {
 
     definition.call(current_constructor);
 
+    if(parent) {
+      for (var i=0; i < parentProps.length; i++) {
+        var prop = parentProps[i];
+        if(!property_in_cache(current_constructor.className, prop)) {
+          this.property(prop, propertyCache[parent.className][prop]);
+        };
+      };
+      if('didSubklass' in parent) {
+        parent.didSubklass(current_constructor);
+      };
+    };
+
     current_module()[name] = current_constructor;
 
-    if(parent && 'didSubklass' in parent) {
-      parent.didSubklass(current_constructor);
-    };
 
     current_constructor = undefined;
     parent_klass = undefined;
@@ -688,10 +697,10 @@ function module(name, definition) {
     },
 
     property: function(name, definition) {
-      if(current_constructor) {
+      if(current_constructor && !property_in_cache(current_constructor.className, name)) {
         cache_property(current_constructor.className, name, definition);
         Object.defineProperty(current_constructor.prototype, name, definition);
-      } else {
+      } else if(!property_in_cache(module_path.join('.'), name)) {
         cache_property(module_path.join('.'), name, definition);
         Object.defineProperty(current_module(), name, definition);
       };

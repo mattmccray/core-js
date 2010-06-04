@@ -76,6 +76,10 @@ function module(name, definition) {
     propertyCache[path][prop] = def;
   };
   
+  function property_in_cache(path, prop) {
+    return ( path in propertyCache && prop in propertyCache[path] );
+  };
+  
   function has_super(name) {
     if(parent_klass) {
       var parent = parent_klass.prototype,
@@ -131,12 +135,11 @@ function module(name, definition) {
 //        console.log(" + static method: "+ prop)
         current_constructor[prop] = parent[prop];
       };
-      for (var i=0; i < parentProps.length; i++) {
-        var prop = parentProps[i];
-//        console.log(" @ property: "+ prop)
-        this.property(prop, propertyCache[parent.className][prop]);
-      };
-
+//       for (var i=0; i < parentProps.length; i++) {
+//         var prop = parentProps[i];
+// //        console.log(" @ property: "+ prop)
+//         this.property(prop, propertyCache[parent.className][prop]);
+//       };
       while (grandparent) {
 //        console.log(' > ancestor chain: '+ grandparent.klass.displayName);
         current_constructor.ancestors.push(grandparent);
@@ -148,11 +151,24 @@ function module(name, definition) {
     
     definition.call(current_constructor);
     
-    current_module()[name] = current_constructor;
-    
-    if(parent && 'didSubklass' in parent) {
-      parent.didSubklass(current_constructor);
+    if(parent) {
+      for (var i=0; i < parentProps.length; i++) {
+        var prop = parentProps[i];
+        if(!property_in_cache(current_constructor.className, prop)) {
+//        console.log(" @ property: "+ prop)
+          this.property(prop, propertyCache[parent.className][prop]);
+        };
+      };
+      if('didSubklass' in parent) {
+        parent.didSubklass(current_constructor);
+      };
     };
+
+    current_module()[name] = current_constructor;
+
+    // if(parent && 'didSubklass' in parent) {
+    //   parent.didSubklass(current_constructor);
+    // };
     
     current_constructor = undefined;
     parent_klass = undefined;
@@ -230,10 +246,10 @@ function module(name, definition) {
       // definition.configurable = true;
       // if(!'value' in definition) definition.writable = true;
       // definition.enumerable = true;
-      if(current_constructor) {
+      if(current_constructor && !property_in_cache(current_constructor.className, name)) {
         cache_property(current_constructor.className, name, definition);
         Object.defineProperty(current_constructor.prototype, name, definition);
-      } else {
+      } else if(!property_in_cache(module_path.join('.'), name)) {
         cache_property(module_path.join('.'), name, definition);
         Object.defineProperty(current_module(), name, definition);
       };

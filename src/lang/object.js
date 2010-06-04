@@ -127,7 +127,8 @@ Native.extendAll(Object, {
 });
 
 if(!('defineProperty' in Object) && '__defineGetter__' in Object.prototype) {
-  Object.extend('defineProperty', function(object, name, defs) {
+
+  Native.extend(Object, 'defineProperty', function(object, name, defs) {
     if('get' in defs) object.__defineGetter__(name, defs.get);
     if('set' in defs) object.__defineSetter__(name, defs.set);
     if('value' in defs) { // How to handle defs.value?

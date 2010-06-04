@@ -404,6 +404,49 @@ describe('klass', function() {
       delete ClassTest11;
     });
     
+
+        it("should support overriding inherited properties", function() {
+          module('ClassTest11', function(){
+            klass('Person', function(){
+              ctor(function(name){
+                this.name = name;
+              });
+
+              property('title', { get:function(){ return ':'+ this.name; } });
+
+            });
+
+            subklass(Person, 'Sith', function(){
+              ctor(function(name){
+                this._super('Darth '+ name);
+              });
+              
+              property('title', { get: function(){ return '>'+ this.name; }});
+            });
+
+    //         subklass(Sith, 'Emperor', function(){
+    //           ctor(function(name){
+    //             this._super('Lord '+ name);
+    // //              this.name = 'Lord '+ name;
+    //           });
+    //         });
+          });
+
+          var u = new ClassTest11.Person("Matt");
+          var s = new ClassTest11.Sith("APO");
+      //    var e = new ClassTest11.Emperor('Palpatine');
+
+          // alert(u.title)
+          // alert(s.title)
+          // alert(e.title)
+
+          expect(u.title).to(equal, ':Matt');
+          expect(s.title).to(equal, '>Darth APO');
+    //      expect(e.title).to(equal, ':Lord Palpatine');
+
+          delete ClassTest11;
+        });
+
   });
 
 });
