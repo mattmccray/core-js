@@ -98,8 +98,8 @@ function module(name, definition) {
     
     var ancestor = current_constructor.ancestors.first(function(proto) { return proto.hasOwnProperty(name) && Var.isFunction(proto[name]); });
 
-    console.log(" super."+ name +" from: "+ ancestor.klass.displayName);
-    console.dir(ancestor[name])
+//    console.log(" super."+ name +" from: "+ ancestor.klass.displayName);
+//    console.dir(ancestor[name])
 
     return ancestor[name];
   };
@@ -120,7 +120,7 @@ function module(name, definition) {
     current_constructor.prototype.klass = current_constructor;
     
     if(parent) {
-      console.log(name +" is subklassing: "+ parent.displayName);
+//      console.log(name +" is subklassing: "+ parent.displayName);
       var grandparent = parent.prototype, 
           parentProps = (parent.className in propertyCache) ? Object.keys(propertyCache[parent.className]) : [],
           exclusions = excludeFields.clone().concat(parentProps).flatten();
@@ -128,17 +128,17 @@ function module(name, definition) {
       current_constructor.prototype.klass = current_constructor;
       current_constructor.prototype.superKlass = parent;
       for(var prop in Object.without(parent, exclusions)) {// Copy static methods...
-        console.log(" + static method: "+ prop)
+//        console.log(" + static method: "+ prop)
         current_constructor[prop] = parent[prop];
       };
       for (var i=0; i < parentProps.length; i++) {
         var prop = parentProps[i];
-        console.log(" @ property: "+ prop)
+//        console.log(" @ property: "+ prop)
         this.property(prop, propertyCache[parent.className][prop]);
       };
 
       while (grandparent) {
-        console.log(' > ancestor chain: '+ grandparent.klass.displayName);
+//        console.log(' > ancestor chain: '+ grandparent.klass.displayName);
         current_constructor.ancestors.push(grandparent);
         grandparent = ('superKlass' in grandparent) ? grandparent.superKlass.prototype : false;
       };
